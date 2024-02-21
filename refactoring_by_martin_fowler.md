@@ -45,3 +45,149 @@ It may sound like I always recommend refactoring—but there are cases when it�
 If I run across code that is a mess, but I don’t need to modify it, then I don’t need to refactor it. Some ugly code that I can treat as an API may remain ugly. It’s only when I need to understand how it works that refactoring gives me any benefit.
 
 Another case is when it’s easier to rewrite it than to refactor it. This is a tricky decision. Often, I can’t tell how easy it is to refactor some code unless I spend some time trying and thus get a sense of how difficult it is. The decision to refactor or rewrite requires good judgment and experience, and I can’t really boil it down into a piece of simple advice.
+
+
+
+#### Examples
+
+- ##### Change Function Declaration
+
+😕🤬👎
+```java
+public enum NotificationStatusEnum {
+...
+
+Page<SchoolEventNotification> findByEventIdAndPatientIds(
+        Long eventId, List<Long> patientIds, Pageable pageable);
+...
+
+var req = ispkMapper.map(event);
+var resp = ispkSender.send(req);
+```
+😊👍💯
+```java
+public enum NotificationStatus {
+...
+
+Page<SchoolEventNotification> findNotifyByEventIdAndPatientIds(
+        Long eventId, List<Long> patientIds, Pageable pageable);
+...
+
+var request = ispkMapper.map(event);
+var response = ispkSender.send(req);
+```
+2. ##### # Replace Nested Conditional with Guard Clauses
+
+```java
+public static Pageable transformPageable(PagingOptions pagingOptions) {
+    Pageable pageable;
+    boolean usingPaging = Objects.nonNull(pagingOptions);
+    if (usingPaging) {
+        if (pagingOptions.getSortingOptions() != null && !pagingOptions.getSortingOptions().getSortOrder().isEmpty()) {
+            SortOrder sortOrder = pagingOptions.getSortingOptions().getSortOrder().get(0);
+            Sort sort = Sort.by(sortOrder.isDesceding() ? Sort.Direction.DESC : Sort.Direction.ASC, sortOrder.getAttributeName());
+            pageable = PageRequest.of(pagingOptions.getPageNumber(), pagingOptions.getPageSize(), sort);
+        } else {
+            pageable = PageRequest.of(pagingOptions.getPageNumber(), pagingOptions.getPageSize());
+        }
+    } else {
+        pageable = PageRequest.of(0, 20);
+    }
+    return pageable;
+}
+
+```
+
+
+😊👍💯
+```java
+public Pageable toPageable(PagingOptions pagingOptions) {
+    if (Objects.isNull(pagingOptions)) {
+        return PageRequest.of(0, 20);
+    }
+
+    if (pagingOptions.getSortingOptions() == null
+            || pagingOptions.getSortingOptions().getSortOrder().isEmpty()) {
+        return PageRequest.of(pagingOptions.getPageNumber(), pagingOptions.getPageSize());
+    }
+
+    SortOrder sortOrder = pagingOptions.getSortingOptions().getSortOrder().get(0);
+    Direction sortDirection = sortOrder.isDesceding()
+            ? Sort.Direction.DESC
+            : Sort.Direction.ASC;
+    Sort sort = Sort.by(sortDirection, sortOrder.getAttributeName());
+
+    return PageRequest.of(pagingOptions.getPageNumber(), pagingOptions.getPageSize(), sort);
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+- ##### Optional
+
+😕🤬👎
+```java
+public IspkEventCode defineEvent(SchoolEventNotification event) {
+    final var op = of(event);
+    return op
+            .filter(filter.ageLTAndLegalHasEmail)
+            .map(p -> LEGAL_EMAIL)
+            .orElseGet(
+                    () -> op
+                            .filter(filter.ageGTEQAndPatientHasEmailOrLegalHasEmail)
+                            .map(SchoolEventNotification::getPatient)
+                            .map(Patient::getEmail)
+                            .map(l -> PATIENT_EMAIL)
+                            .orElseGet(
+                                    () -> op
+                                            .map(SchoolEventNotification::getRepresentative)
+                                            .map(LegalRepresentative::getEmail)
+                                            .map(e -> LEGAL_EMAIL)
+                                            // this should never happen
+                                            .orElseThrow(() -> new RuntimeException(BusinessErrorEnum.CANT_DEFINE_EVENT_CODE.getMessage()))
+                                )
+                );
+}
+```
+
+😊👍💯
+```java
+private IspkEventCode defineEvent(SchoolEventNotification event) {
+    if (filter.ageLessThan().and(filter.legalHasEmail()).test(event)) {
+        return IspkEventCode.LEGAL_EMAIL;
+    } else if (filter.ageGreaterOrEqualAndPatientHasEmailOrLegalHasEmail(event)) {
+        return IspkEventCode.PATIENT_EMAIL;
+    } else {
+        return IspkEventCode.LEGAL_EMAIL;
+    }
+}
+```
+
+😕🤬👎
+```java
+Optional<SchoolEvent> schoolEvent = schoolEventRepository.findById(event.getEventId());
+if (schoolEvent.isEmpty()) {
+    schoolEvent = Optional.of(schoolEventRepository.save(notificationMapper.mapFromEventToSchoolEvent(event)));
+}
+schoolEvent.ifPresent(schoolEv -> {
+    List<SchoolEventNotification> eventNotifications = notificationMapper.
+            mapRequestToEventNotification(schoolEv, systemOperation, body.getNotification());
+    schoolEventNotificationRepository.saveAll(eventNotifications);
+});
+```
+
+😊👍💯
+```java
+SchoolEvent schoolEvent = schoolEventRepository.findById(event.getEventId())
+        .orElse(schoolEventRepository.save(notificationMapper.toSchoolEvent(event)));
+schoolEventNotificationRepository.saveAll(notificationMapper.toSchoolEventNotifications(
+        schoolEvent, systemOperation, body.getNotification()));
+```
