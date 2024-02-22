@@ -46,16 +46,14 @@ If I run across code that is a mess, but I don’t need to modify it, then I don
 
 Another case is when it’s easier to rewrite it than to refactor it. This is a tricky decision. Often, I can’t tell how easy it is to refactor some code unless I spend some time trying and thus get a sense of how difficult it is. The decision to refactor or rewrite requires good judgment and experience, and I can’t really boil it down into a piece of simple advice.
 
-
-
 #### Examples
 
-- ##### Change Function Declaration
+##### Change Function Declaration
 
 😕🤬👎
 ```java
 public enum NotificationStatusEnum {
-...
+... 
 
 Page<SchoolEventNotification> findByEventIdAndPatientIds(
         Long eventId, List<Long> patientIds, Pageable pageable);
@@ -76,8 +74,76 @@ Page<SchoolEventNotification> findNotifyByEventIdAndPatientIds(
 var request = ispkMapper.map(event);
 var response = ispkSender.send(req);
 ```
-2. ##### # Replace Nested Conditional with Guard Clauses
 
+##### Replace Derived Variable with Query
+
+😕🤬👎
+```java
+public class FilterSchoolEvent implements Predicate<SchoolEventNotification> {
+    private final int age;
+
+    public final Predicate<SchoolEventNotification> ageLT;
+    public final Predicate<SchoolEventNotification> ageGTEQ;
+    public final Predicate<SchoolEventNotification> legalHasEmail;
+    public final Predicate<SchoolEventNotification> patientHasEmail;
+    public final Predicate<SchoolEventNotification> ageLTAndLegalHasEmail;
+    public final Predicate<SchoolEventNotification> ageGTEQAndPatientHasEmailOrLegalHasEmail;
+    ...
+    
+    public FilterSchoolEvent(int age) {
+        this.age = age;
+        this.ageLT = event -> event.getPatient().getAge() < age;
+        this.ageGTEQ = event -> event.getPatient().getAge() >= age;
+        this.legalHasEmail = event -> Objects.nonNull(event.getRepresentative()) && isNotBlank(event.getRepresentative().getEmail());
+        this.patientHasEmail = event -> isNotBlank(event.getPatient().getEmail());
+        this.ageLTAndLegalHasEmail = ageLT.and(legalHasEmail);
+        ...
+    }
+```
+
+😊👍💯
+```java
+
+@RequiredArgsConstructor
+public class FilterSchoolEvent implements Predicate<SchoolEventNotification> {
+
+	@Override
+    public boolean test(SchoolEventNotification schoolEventNotification) {
+        var checkBusiness = ageLessThan().and(legalHasEmail())
+                .or(ageGreaterThanOrEqual().and(patientHasEmail().or(legalHasEmail())));
+        return checkBusiness.test(schoolEventNotification);
+    }
+
+    public Predicate<SchoolEventNotification> ageLessThan() {
+        return event -> event.getPatient().getAge() < age;
+    }
+
+    public Predicate<SchoolEventNotification> ageGreaterThanOrEqual() {
+        return event -> event.getPatient().getAge() >= age;
+    }
+
+    public Predicate<SchoolEventNotification> legalHasEmail() {
+        return event -> {
+            var representative = event.getRepresentative();
+            return Objects.nonNull(representative)
+                    && Objects.nonNull(representative.getEmail())
+                    && !representative.getEmail().isBlank();
+        };
+    }
+
+    public Predicate<SchoolEventNotification> patientHasEmail() {
+        return event -> {
+            var email = event.getPatient().getEmail();
+            return Objects.nonNull(email) && !email.isBlank();
+        };
+    }
+	...
+}
+```
+
+##### Replace Nested Conditional with Guard Clauses
+
+😕🤬👎
 ```java
 public static Pageable transformPageable(PagingOptions pagingOptions) {
     Pageable pageable;
@@ -106,7 +172,7 @@ public Pageable toPageable(PagingOptions pagingOptions) {
         return PageRequest.of(0, 20);
     }
 
-    if (pagingOptions.getSortingOptions() == null
+    if (pagingOptions.getSortingOptions() == null 
             || pagingOptions.getSortingOptions().getSortOrder().isEmpty()) {
         return PageRequest.of(pagingOptions.getPageNumber(), pagingOptions.getPageSize());
     }
@@ -121,17 +187,7 @@ public Pageable toPageable(PagingOptions pagingOptions) {
 }
 ```
 
-
-
-
-
-
-
-
-
-
-
-- ##### Optional
+##### Optional
 
 😕🤬👎
 ```java
