@@ -48,7 +48,7 @@ Another case is when it’s easier to rewrite it than to refactor it. This is a 
 
 #### Examples
 
-#####
+##### Naming
 
 😕🤬👎
 ```java
@@ -61,6 +61,8 @@ Page<SchoolEventNotification> findNotifyByEventIdAndPatientIds(
 
 var req = ispkMapper.map(event);
 var resp = ispkSender.send(req);
+
+long idEvent = request.getIdEvent();
 ```
 😊👍💯
 ```java
@@ -73,6 +75,8 @@ Page<SchoolEventNotification> findByEventIdAndPatientIds(
 
 var request = ispkMapper.map(event);
 var response = ispkSender.send(req);
+
+long eventId = request.getIdEvent();
 ```
 
 ##### Replace Derived Variable with Query
