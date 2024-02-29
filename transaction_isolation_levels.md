@@ -23,8 +23,6 @@ create table sales (
 
 insert into products values (1, 'phone', '1000', 100);
 
---     client 1                                                        client 2
-
 set transaction isolation level read uncommitted;
 begin:
 
@@ -32,28 +30,57 @@ begin:
 
 select quantity from products where name = 'phone';
 
-                                                                   insert into sales values (1, 1, 20);
-                                                                   update products set quantity = (quantity - 20) where id = 1;
+                                                                   insert into sales values (1, 1, 10);
+                                                                   update products set quantity = (quantity - 10) where name = 'phone';
 
--- get 80, beacuse of another transaction
+-- shows 90, beacuse of another transaction
 select quantity from products where name = 'phone';
-
--- successfuly updated
-insert into sales values (2, 1, 10);
--- will be waiting for another transaction
-update products set quantity = (quantity - 10) where id = 1;
 
 commit;
                                                                    rollback;
--- get 90
-select quantity from products where name = 'phone';
+```
 
+##### Non-repetable reads
 
+```sql
 
+insert into products values (2, 'laptop', '2000', 100);
 
+begin transaction isolation level read committed;
 
+                                                                   begin;
+select quantity from products where name = 'laptop';
 
+                                                                   insert into sales values (1, 2, 10);
+                                                                   update products set quantity = (quantity - 10) where id = 2;
 
+-- shows 100
+select quantity from products where name = 'laptop';
 
+                                                                   commit;
 
--- begin transaction isolation level read uncommitted;
+-- shows 90
+select quantity from products where name = 'laptop';
+commit;
+```
+
+##### Phantom reads
+
+```sql
+insert into products values (3, 'car', '10000', 10);
+
+insert into sales values (2, 3, 1);
+insert into sales values (3, 3, 2);
+update products set quantity = (quantity - 3) where name = 'car';
+
+begin transaction isolation level repeatable read;
+
+select sum(quantity) from sales;
+
+                                                                   begin;
+                                                                   insert into sales values (4, 3, 1);
+                                                                   commit;
+
+select sum(quantity) from sales;
+commit;
+```
