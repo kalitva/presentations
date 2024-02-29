@@ -22,17 +22,17 @@ The best time to refactor is just before I need to add a new feature to the code
 
 Before I can change some code, I need to understand what it does [ ... ] Whenever I have to think to understand what the code is doing, I ask myself if I can refactor the code to make that understanding more immediately apparent. [ ... ] At that point I have some understanding in my head, but my head isn’t a very good record of such details. As Ward Cunningham puts it, by refactoring I move the understanding from my head into the code itself. I then test that understanding by running the software to see if it still works. If I move my understanding into the code, it will be preserved longer and be visible to my colleagues.
 
-- ##### Litter-Pickup Refactoring 
+- ##### Litter-Pickup Refactoring
 
 A variation of comprehension refactoring is when I understand what the code is doing, but realize that it’s doing it badly. [ ... ] I don’t want to spend a lot of time distracted from the task I’m currently doing, but I also don’t want to leave the trash lying around and getting in the way of future changes. If it’s easy to change, I’ll do it right away. If it’s a bit more effort to fix, I might make a note of it and fix it when I’m done with my immediate task.
 
-- ##### Planned and Opportunistic Refactoring 
+- ##### Planned and Opportunistic Refactoring
 
 I don’t set aside time at the beginning to spend on refactoring—instead, I do refactoring as part of adding a feature or fixing a bug. *It’s part of my natural flow of programming*. Whether I’m adding a feature or fixing a bug, refactoring helps me do the immediate task and also sets me up to make future work easier. This is an important point that’s frequently missed. *Refactoring isn’t an activity that’s separated from programming*—any more than you set aside time to write if statements. I don’t put time on my plans to do refactoring; most refactoring happens while I’m doing other things.
 
 - ##### Long-Term Refactoring
 
-Most refactoring can be completed within a few minutes—hours at most. But there are some larger refactoring efforts that can take a team weeks to complete [ ... ] 
+Most refactoring can be completed within a few minutes—hours at most. But there are some larger refactoring efforts that can take a team weeks to complete [ ... ]
 
 Even in such cases, I’m reluctant to have a team do dedicated refactoring. Often, a useful strategy is to agree to gradually work on the problem over the course of the next few weeks. Whenever anyone goes near any code that’s in the refactoring zone, they move it a little way in the direction they want to improve. This takes advantage of the fact that *refactoring doesn’t break the code—each small change leaves everything in a still­working state*. To change from one library to another, start by introducing a new abstraction that can act as an interface to either library. Once the calling code uses this abstraction, it’s much easier to switch one library for another. (This tactic is called Branch By Abstraction.)
 
@@ -48,14 +48,14 @@ Another case is when it’s easier to rewrite it than to refactor it. This is a 
 
 #### Examples
 
-##### Change Function Declaration
+#####
 
 😕🤬👎
 ```java
 public enum NotificationStatusEnum {
-... 
+...
 
-Page<SchoolEventNotification> findByEventIdAndPatientIds(
+Page<SchoolEventNotification> findNotifyByEventIdAndPatientIds(
         Long eventId, List<Long> patientIds, Pageable pageable);
 ...
 
@@ -67,7 +67,7 @@ var resp = ispkSender.send(req);
 public enum NotificationStatus {
 ...
 
-Page<SchoolEventNotification> findNotifyByEventIdAndPatientIds(
+Page<SchoolEventNotification> findByEventIdAndPatientIds(
         Long eventId, List<Long> patientIds, Pageable pageable);
 ...
 
@@ -89,7 +89,7 @@ public class FilterSchoolEvent implements Predicate<SchoolEventNotification> {
     public final Predicate<SchoolEventNotification> ageLTAndLegalHasEmail;
     public final Predicate<SchoolEventNotification> ageGTEQAndPatientHasEmailOrLegalHasEmail;
     ...
-    
+
     public FilterSchoolEvent(int age) {
         this.age = age;
         this.ageLT = event -> event.getPatient().getAge() < age;
@@ -141,7 +141,7 @@ public class FilterSchoolEvent implements Predicate<SchoolEventNotification> {
 }
 ```
 
-##### Replace Nested Conditional with Guard Clauses
+##### Guard Clauses
 
 😕🤬👎
 ```java
@@ -172,7 +172,7 @@ public Pageable toPageable(PagingOptions pagingOptions) {
         return PageRequest.of(0, 20);
     }
 
-    if (pagingOptions.getSortingOptions() == null 
+    if (pagingOptions.getSortingOptions() == null
             || pagingOptions.getSortingOptions().getSortOrder().isEmpty()) {
         return PageRequest.of(pagingOptions.getPageNumber(), pagingOptions.getPageSize());
     }
@@ -187,7 +187,7 @@ public Pageable toPageable(PagingOptions pagingOptions) {
 }
 ```
 
-##### Optional
+##### KISS example
 
 😕🤬👎
 ```java
@@ -226,6 +226,8 @@ private IspkEventCode defineEvent(SchoolEventNotification event) {
     }
 }
 ```
+
+##### Using Optional
 
 😕🤬👎
 ```java
